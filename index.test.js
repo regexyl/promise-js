@@ -1,8 +1,6 @@
 import { describe, it } from "vitest";
 import MyPromise from ".";
 
-// TODO: Try removing the returns and see if they work
-
 // All tests within this suite will be run in parallel
 describe("MyPromise", () => {
   it.concurrent("Vanilla promise", async ({ expect }) => {
@@ -137,7 +135,6 @@ describe("MyPromise", () => {
         .then(
           (value) => {
             expect(value).toBe("RejectedOne");
-            // expect(value).toBe(undefined);
             return value + "Again";
           }, // executed
           (reason) => reason // not executed

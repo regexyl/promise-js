@@ -129,7 +129,6 @@ describe("Promise", () => {
       .then(
         (value) => {
           expect(value).toBe("RejectedOne");
-          // expect(value).toBe(undefined);
           return value + "Again";
         }, // executed
         (reason) => reason // not executed
