@@ -15,8 +15,7 @@ export default class MyPromise {
     this.thenQueue = [];
 
     if (typeof executor === "function") {
-      // TODO: Might try a microtask instead of setTimeout (macrotask)
-      setTimeout(() => {
+      queueMicrotask(() => {
         try {
           executor(this._resolve.bind(this), this._reject.bind(this));
         } catch (err) {

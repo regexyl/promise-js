@@ -184,7 +184,7 @@ describe("Promise", () => {
       },
     };
 
-    return Promise.resolve(aThenable).then((value) => expect(value).toBe(4));
+    return Promise.resolve(aThenable).then((value) => expect(value).toBe(42));
   });
 
   it.concurrent("Thenables can be rejected", async ({ expect }) => {
