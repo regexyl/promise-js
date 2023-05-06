@@ -5,17 +5,14 @@ const STATUS = {
 };
 
 const isThenable = (maybePromise) =>
-  maybePromise && typeof maybePromise.then != "function";
+  maybePromise && typeof maybePromise.then == "function";
 
 export default class MyPromise {
   constructor(executor) {
     this.status = STATUS.PENDING;
     this.value = undefined;
     this.reason = undefined;
-    this.exception = undefined;
-
     this.thenQueue = [];
-    this.finallyQueue = [];
 
     if (typeof executor === "function") {
       // TODO: Might try a microtask instead of setTimeout (macrotask)
@@ -42,6 +39,17 @@ export default class MyPromise {
     return nextPromise;
   }
 
+  catch(onRejected) {
+    const nextPromise = new MyPromise();
+    this.thenQueue.push([nextPromise, undefined, onRejected]);
+
+    if (this.status === STATUS.REJECTED) {
+      this._onRejected();
+    }
+
+    return nextPromise;
+  }
+
   _onFulfilled() {
     this.thenQueue.forEach(([nextPromise, onFulfilled]) => {
       if (typeof onFulfilled === "function") {
@@ -53,18 +61,20 @@ export default class MyPromise {
             (reason) => nextPromise._reject(reason)
           );
         } else {
-          nextPromise._resolve(this.value);
+          nextPromise._resolve(result);
         }
       } else {
         nextPromise._resolve(this.value);
       }
     });
+
+    this.thenQueue = [];
   }
 
   _onRejected() {
     this.thenQueue.forEach(([nextPromise, _, onRejected]) => {
       if (typeof onRejected === "function") {
-        const result = onRejected(this.value);
+        const result = onRejected(this.reason);
 
         if (isThenable(result)) {
           result.then(
@@ -72,12 +82,14 @@ export default class MyPromise {
             (reason) => nextPromise._reject(reason)
           );
         } else {
-          nextPromise._resolve(this.value);
+          nextPromise._resolve(result);
         }
       } else {
-        nextPromise._rejected(this.value); // rejected, not resolved
+        nextPromise._reject(this.reason);
       }
     });
+
+    this.thenQueue = [];
   }
 
   _resolve(value) {
@@ -94,6 +106,13 @@ export default class MyPromise {
     this._onRejected();
   }
 
-  resolve() {}
-  reject() {}
+  static resolve(value) {
+    if (value instanceof MyPromise) return value;
+    return new MyPromise((res) => res(value));
+  }
+
+  static reject(reason) {
+    if (reason instanceof MyPromise) return reason;
+    return new MyPromise((_, rej) => rej(reason));
+  }
 }

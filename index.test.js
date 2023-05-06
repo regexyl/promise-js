@@ -1,6 +1,8 @@
 import { describe, it } from "vitest";
 import MyPromise from ".";
 
+// TODO: Try removing the returns and see if they work
+
 // All tests within this suite will be run in parallel
 describe("MyPromise", () => {
   it.concurrent("Vanilla promise", async ({ expect }) => {
@@ -102,8 +104,7 @@ describe("MyPromise", () => {
     }
   );
 
-  // If there are no handle rejection callbacks in .then(), error
-  // should be handled at the final catch statement
+  // Errors should be handled at the next .catch() or rejection handler
   it.concurrent(
     "Rejected value should be handled in rejection handler or .catch()",
     async ({ expect }) => {
@@ -121,8 +122,6 @@ describe("MyPromise", () => {
     }
   );
 
-  // TODO: something wrong with this
-  // PrettyFormatPluginError: Invalid Chai property: $$typeof
   it.concurrent(
     "Rejected reason should be passed down to next rejection handler or .catch()",
     async ({ expect }) => {
@@ -166,25 +165,35 @@ describe("MyPromise", () => {
   );
 
   it.concurrent(
-    "Error should be caught immediately if rejection callbacks are included in .then()",
+    "Error should be caught at first .catch() or a rejection callback in .then()",
     async ({ expect }) => {
       let errorMessage;
-      return new MyPromise((_, rej) => rej(1))
-        .then((value) => value + 1)
+      return new MyPromise((_, rej) => {
+        rej("Rejected");
+      })
+        .then((value) => {
+          return value + 1;
+        })
         .then(
-          (value) => value + 1,
+          (value) => {
+            return value + 1;
+          },
           (reason) => {
-            expect(reason).toBe("Caught: 1");
+            expect(reason).toBe("Rejected");
+            return "Post-rejection";
           }
         )
-        .then((value) => value + 1)
-        .catch((error) => (errorMessage = `Error: ${error}`));
+        .then((value) => {
+          expect(value).toBe("Post-rejection");
+          return "Post-" + value;
+        })
+        .catch((error) => (errorMessage = `NotTheRejectedMessage: ${error}`));
     }
   );
 
   // JS has had many implementations of promises, but all of them
   // implement the Thenable interface at the minimum
-  it.concurrent("Thenables should be fulfilled", async ({ expect }) => {
+  it.concurrent("Thenables can be fulfilled", async ({ expect }) => {
     const aThenable = {
       then(onFulfilled, onRejected) {
         onFulfilled({
@@ -196,6 +205,25 @@ describe("MyPromise", () => {
       },
     };
 
-    return Promise.resolve(aThenable).then((value) => expect(value).toBe(42));
+    const result = MyPromise.resolve(aThenable);
+    result.then((value) => expect(value).toBe(42));
+  });
+
+  it.concurrent("Thenables can be rejected", async ({ expect }) => {
+    const aThenable = {
+      then(onFulfilled, onRejected) {
+        onRejected({
+          // The thenable is fulfilled with another thenable
+          then(onFulfilled, onRejected) {
+            onRejected(42);
+          },
+        });
+      },
+    };
+
+    return MyPromise.reject(aThenable).then(
+      () => {},
+      (reason) => expect(reason).toBe(aThenable)
+    );
   });
 });

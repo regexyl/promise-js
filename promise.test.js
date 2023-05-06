@@ -114,8 +114,6 @@ describe("Promise", () => {
     return [promise1, promise2];
   });
 
-  // TODO: something wrong with this
-  // PrettyFormatPluginError: Invalid Chai property: $$typeof
   it("Rejected reason should be passed down to next rejection handler or .catch()", async ({
     expect,
   }) => {
@@ -175,7 +173,7 @@ describe("Promise", () => {
 
   // JS has had many implementations of promises, but all of them
   // implement the Thenable interface at the minimum
-  it("Thenables should be fulfilled", async ({ expect }) => {
+  it("Thenables can be fulfilled", async ({ expect }) => {
     const aThenable = {
       then(onFulfilled, onRejected) {
         onFulfilled({
@@ -187,6 +185,24 @@ describe("Promise", () => {
       },
     };
 
-    return Promise.resolve(aThenable).then((value) => expect(value).toBe(42));
+    return Promise.resolve(aThenable).then((value) => expect(value).toBe(4));
+  });
+
+  it.concurrent("Thenables can be rejected", async ({ expect }) => {
+    const aThenable = {
+      then(onFulfilled, onRejected) {
+        onRejected({
+          // The thenable is fulfilled with another thenable
+          then(onFulfilled, onRejected) {
+            onRejected(42);
+          },
+        });
+      },
+    };
+
+    return Promise.reject(aThenable).then(
+      () => {},
+      (reason) => expect(reason).toBe(aThenable)
+    );
   });
 });
